@@ -1,0 +1,10 @@
+# node dependencies
+node_modules
+
+# dot files
+.*
+
+# allowed dot files
+!.prettierrc
+!.env.example
+!.gitignore

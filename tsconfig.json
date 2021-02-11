@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES5",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "strict": true,
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "downlevelIteration": true
+  }
+}
