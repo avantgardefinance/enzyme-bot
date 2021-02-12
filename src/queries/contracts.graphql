@@ -1,0 +1,45 @@
+query currentReleaseContracts {
+  network(id: "ENZYME") {
+    currentRelease {
+      adapterBlacklist
+      adapterWhitelist
+      aggregatedDerivativePriceFeed
+      assetBlacklist
+      assetWhitelist
+      buySharesCallerWhitelist
+      chaiAdapter
+      chaiIntegratee
+      chainlinkPriceFeed
+      compoundAdapter
+      comptrollerLib
+      dispatcher
+      entranceRateBurnFee
+      entranceRateDirectFee
+      feeManager
+      fundActionsWrapper
+      fundDeployer
+      guaranteedRedemption
+      integrationManager
+      investorWhitelist
+      kyberAdapter
+      kyberIntegratee
+      managementFee
+      maxConcentration
+      minMaxInvestment
+      paraSwapAdapter
+      performanceFee
+      policyManager
+      synthetixAdapter
+      synthetixAddressResolver
+      synthetixDelegateApprovals
+      synthetixIntegratee
+      trackedAssetsAdapter
+      uniswapV2Adapter
+      uniswapV2Integratee
+      valueInterpreter
+      vaultLib
+      wethToken
+      zeroExV2Adapter
+    }
+  }
+}
