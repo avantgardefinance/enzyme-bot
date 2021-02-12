@@ -4,6 +4,12 @@ node_modules
 # dot files
 .*
 
+# .lock files
+*.lock
+
+# .log files
+*.log
+
 # allowed dot files
 !.prettierrc
 !.env.example

@@ -1,0 +1,8 @@
+schema: ${SUBGRAPH_ENDPOINT_KOVAN}
+documents: src/queries/*.graphql
+generates:
+  src/utils/subgraph/subgraph.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-graphql-request

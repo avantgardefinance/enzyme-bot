@@ -8,14 +8,29 @@
   ],
   "license": "MIT",
   "private": false,
+  "scripts": {
+    "postinstall": "yarn codegen",
+    "start": "NODE_ENV=development VERCEL_URL=localhost:3091 vercel dev --listen 3091",
+    "codegen": "dotenv -- graphql-codegen --config codegen.yaml"
+  },
   "dependencies": {
     "@enzymefinance/protocol": "^1.0.0-dev.5046+8993c26a",
-    "ethers": "^5.0.30"
+    "ethers": "^5.0.30",
+    "graphql": "^15.5.0",
+    "graphql-request": "^3.4.0"
   },
   "devDependencies": {
-    "@types/node": "^14.14.25",
-    "cross-env": "^7.0.3",
-    "dotenv-extended": "^2.9.0",
-    "typescript": "^4.1.5"
+    "@graphql-codegen/cli": "^1.20.0",
+    "@graphql-codegen/typescript": "^1.20.0",
+    "@graphql-codegen/typescript-graphql-request": "^3.0.0",
+    "@graphql-codegen/typescript-operations": "^1.17.13",
+    "@typescript-eslint/eslint-plugin": "^4.14.0",
+    "@typescript-eslint/parser": "^4.14.0",
+    "dotenv-cli": "^4.0.0",
+    "eslint": "^7.18.0",
+    "eslint-config-prettier": "^7.2.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "prettier": "^2.2.1",
+    "typescript": "^4.1.3"
   }
 }
