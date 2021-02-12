@@ -1,3 +1,6 @@
-// check environment variable to see which network you're on
-// fetch appropriate contract addresses from subgraph
-// return deployment object
+import { gql } from './subgraph/sdk';
+
+export async function getDeployment(){
+  const result = await gql.currentReleaseContracts()
+  return result.network?.currentRelease;
+}

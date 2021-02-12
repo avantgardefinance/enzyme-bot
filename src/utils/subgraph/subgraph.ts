@@ -24499,6 +24499,20 @@ export type AssetsQuery = (
   )> }
 );
 
+export type CurrentReleaseContractsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type CurrentReleaseContractsQuery = (
+  { __typename?: 'Query' }
+  & { network?: Maybe<(
+    { __typename?: 'Network' }
+    & { currentRelease?: Maybe<(
+      { __typename?: 'Release' }
+      & Pick<Release, 'adapterBlacklist' | 'adapterWhitelist' | 'aggregatedDerivativePriceFeed' | 'assetBlacklist' | 'assetWhitelist' | 'buySharesCallerWhitelist' | 'chaiAdapter' | 'chaiIntegratee' | 'chainlinkPriceFeed' | 'compoundAdapter' | 'comptrollerLib' | 'dispatcher' | 'entranceRateBurnFee' | 'entranceRateDirectFee' | 'feeManager' | 'fundActionsWrapper' | 'fundDeployer' | 'guaranteedRedemption' | 'integrationManager' | 'investorWhitelist' | 'kyberAdapter' | 'kyberIntegratee' | 'managementFee' | 'maxConcentration' | 'minMaxInvestment' | 'paraSwapAdapter' | 'performanceFee' | 'policyManager' | 'synthetixAdapter' | 'synthetixAddressResolver' | 'synthetixDelegateApprovals' | 'synthetixIntegratee' | 'trackedAssetsAdapter' | 'uniswapV2Adapter' | 'uniswapV2Integratee' | 'valueInterpreter' | 'vaultLib' | 'wethToken' | 'zeroExV2Adapter'>
+    )> }
+  )> }
+);
+
 
 export const AssetsDocument = gql`
     query assets {
@@ -24537,6 +24551,53 @@ export const AssetsDocument = gql`
   }
 }
     `;
+export const CurrentReleaseContractsDocument = gql`
+    query currentReleaseContracts {
+  network(id: "ENZYME") {
+    currentRelease {
+      adapterBlacklist
+      adapterWhitelist
+      aggregatedDerivativePriceFeed
+      assetBlacklist
+      assetWhitelist
+      buySharesCallerWhitelist
+      chaiAdapter
+      chaiIntegratee
+      chainlinkPriceFeed
+      compoundAdapter
+      comptrollerLib
+      dispatcher
+      entranceRateBurnFee
+      entranceRateDirectFee
+      feeManager
+      fundActionsWrapper
+      fundDeployer
+      guaranteedRedemption
+      integrationManager
+      investorWhitelist
+      kyberAdapter
+      kyberIntegratee
+      managementFee
+      maxConcentration
+      minMaxInvestment
+      paraSwapAdapter
+      performanceFee
+      policyManager
+      synthetixAdapter
+      synthetixAddressResolver
+      synthetixDelegateApprovals
+      synthetixIntegratee
+      trackedAssetsAdapter
+      uniswapV2Adapter
+      uniswapV2Integratee
+      valueInterpreter
+      vaultLib
+      wethToken
+      zeroExV2Adapter
+    }
+  }
+}
+    `;
 
 export type SdkFunctionWrapper = <T>(action: () => Promise<T>) => Promise<T>;
 
@@ -24546,6 +24607,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
   return {
     assets(variables?: AssetsQueryVariables, requestHeaders?: Dom.RequestInit["headers"]): Promise<AssetsQuery> {
       return withWrapper(() => client.request<AssetsQuery>(print(AssetsDocument), variables, requestHeaders));
+    },
+    currentReleaseContracts(variables?: CurrentReleaseContractsQueryVariables, requestHeaders?: Dom.RequestInit["headers"]): Promise<CurrentReleaseContractsQuery> {
+      return withWrapper(() => client.request<CurrentReleaseContractsQuery>(print(CurrentReleaseContractsDocument), variables, requestHeaders));
     }
   };
 }
