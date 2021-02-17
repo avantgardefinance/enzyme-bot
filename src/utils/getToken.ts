@@ -1,13 +1,14 @@
 import { gql } from './subgraph/sdk';
 
+// pass these your subgraph endpoint
 export async function getTokens(endpoint: string) {
   const result = await gql(endpoint).assets();
   return result
 }
 
-export async function getToken(endpoint: string, tokenSymbol: string){
+export async function getToken(endpoint: string, variable: 'symbol' | 'id',  token: string){
   const result = await gql(endpoint).assets();
-  return result.assets.find((asset)=> asset.symbol === tokenSymbol)
+  return result.assets.find((asset)=> asset[variable] === token)
 }
 
 export interface Token {
