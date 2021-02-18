@@ -97,7 +97,8 @@ export class EnzymeBot {
     });
 
     const contract = new ComptrollerLib(this.fundAddress, this.wallet);
-    const fn = contract.callOnExtension.args(
+    
+    return contract.callOnExtension.args(
       IntegrationManager,
       IntegrationManagerActionId.CallOnIntegration,
       callArgs
@@ -125,6 +126,6 @@ export class EnzymeBot {
     // get a price from uniswap to swap all of your current asset for the random asset
     const priceToSwap = await this.getPrice(randomAsset, currentHoldings[0].token, currentHoldings[0].amount);
     // do that trade
-    this.swapTokens(priceToSwap)
+    return this.swapTokens(priceToSwap)
   }
 }
