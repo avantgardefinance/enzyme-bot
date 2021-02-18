@@ -1,5 +1,5 @@
 import { providers } from 'ethers';
 
-export function getProvider(address: string) {
-  return new providers.JsonRpcProvider(address);
+export function getProvider(network: 'MAINNET' | 'KOVAN') {
+  return  providers.getDefaultProvider(network);
 }

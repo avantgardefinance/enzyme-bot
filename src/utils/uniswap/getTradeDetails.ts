@@ -4,7 +4,7 @@ import { Asset } from '../subgraph/subgraph';
 
 export async function getTradeDetails(
   network: 'KOVAN' | 'MAINNET',
-  provider: providers.JsonRpcProvider,
+  provider: providers.BaseProvider,
   sellToken: Asset,
   buyToken: Asset,
   sellTokenAmount: BigNumberish
@@ -14,6 +14,5 @@ export async function getTradeDetails(
   const pair = await Fetcher.fetchPairData(outgoingToken, incomingToken, provider);
   const route = new Route([pair], outgoingToken);
   const tokenOutAmount = new TokenAmount(outgoingToken, sellTokenAmount.toString());
-  const trade = new Trade(route, tokenOutAmount, TradeType.EXACT_INPUT);
-  return trade;
+  return new Trade(route, tokenOutAmount, TradeType.EXACT_INPUT); 
 }
