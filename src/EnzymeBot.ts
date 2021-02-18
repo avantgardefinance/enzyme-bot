@@ -20,37 +20,34 @@ import { Asset, AssetsQuery, CurrentReleaseContractsQuery } from './utils/subgra
 import { getTradeDetails } from './utils/uniswap/getTradeDetails';
 
 export class EnzymeBot {
-  public static async create(network: 'KOVAN' | 'MAINNET', token1: string, token2: string) {
+  public static async create() {
+    const network = loadEnv('NETWORK')
     const subgraphEndpoint =
       network === 'MAINNET' ? loadEnv('SUBGRAPH_ENDPOINT_MAINNET') : loadEnv('SUBGRAPH_ENDPOINT_KOVAN');
-    const providerEndpoint =
-      network === 'MAINNET' ? loadEnv('MAINNET_PROVIDER_ENDPOINT') : loadEnv('KOVAN_PROVIDER_ENDPOINT');
     const key = network === 'MAINNET' ? loadEnv('MAINNET_KEY') : loadEnv('KOVAN_KEY');
     const contracts = await getDeployment(subgraphEndpoint);
     const tokens = await getTokens(subgraphEndpoint);
-    const provider = getProvider(providerEndpoint);
+    const provider = getProvider(network as 'KOVAN' | 'MAINNET');
     const wallet = getWallet(key, provider);
-    const fundAddress = loadEnv('FUND_ADDRESS');
+    const fundAddress = loadEnv('ENZYME_PRODUCT_ADDRESS');
 
-    return new this(network, contracts, tokens, wallet, fundAddress, token1, token2, provider, subgraphEndpoint); // add this stuff
+    return new this(network, contracts, tokens, wallet, fundAddress, provider, subgraphEndpoint);
   }
 
   private constructor(
-    public readonly network: 'KOVAN' | 'MAINNET',
+    public readonly network: string,
     public readonly contracts: CurrentReleaseContractsQuery,
     public readonly tokens: AssetsQuery,
     public readonly wallet: Wallet,
     public readonly fundAddress: string,
-    public readonly token1: string,
-    public readonly token2: string,
-    public readonly provider: providers.JsonRpcProvider,
+    public readonly provider: providers.BaseProvider,
     public readonly subgraphEndpoint: string
   ) {}
 
   public chooseRandomAsset() {
     const assets = this.tokens.assets;
-    const random = Math.floor(Math.random() * 10);
-    console.log(assets && Object.keys(assets));
+    const random = Math.random() * 100;
+    
     if (!assets || random > assets.length) {
       return undefined;
     }
@@ -66,8 +63,7 @@ export class EnzymeBot {
   }
 
   public async getPrice(buyToken: Asset, sellToken: Asset, sellTokenAmount: BigNumberish){
-    // call uniswap (because of kovan availability) to get a price to swap all of the sell token for the buy token
-    const details = await getTradeDetails(this.network, this.provider, sellToken, buyToken, sellTokenAmount);
+    const details = await getTradeDetails(this.network as 'KOVAN' | 'MAINNET', this.provider, sellToken, buyToken, sellTokenAmount);
     return details;
   }
 
@@ -89,8 +85,8 @@ export class EnzymeBot {
 
     const takeOrderArgs = uniswapV2TakeOrderArgs({
       // check route property on trade object for path
-      path: [tokenObjects[0]?.id, weth?.id, tokenObjects[1]?.id],
-      minIncomingAssetAmount: BigNumber.from(trade.outputAmount),
+      path: trade.route,
+      minIncomingAssetAmount: BigNumber.from(trade),
       outgoingAssetAmount: BigNumber.from(trade.inputAmount),
     });
 
