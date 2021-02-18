@@ -6,9 +6,9 @@ export async function getTokens(endpoint: string) {
   return result
 }
 
-export async function getToken(endpoint: string, variable: 'symbol' | 'id',  token: string){
+export async function getToken(endpoint: string, assetProperty: 'symbol' | 'id',  assetPropertyValue: string){
   const result = await gql(endpoint).assets();
-  return result.assets.find((asset)=> asset[variable] === token)
+  return result.assets.find((asset)=> asset[assetProperty] === assetPropertyValue)
 }
 
 export interface Token {
