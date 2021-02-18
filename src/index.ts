@@ -1,12 +1,25 @@
-import { getDeployment } from './utils/getDeployment';
-import { getProvider } from './utils/getProvider';
-import { getTokens } from './utils/getToken';
-import { loadEnv } from './utils/loadEnv';
+import { EnzymeBot } from './EnzymeBot';
+
+async function run(bot: EnzymeBot) {
+  try {
+    const transaction = await bot.tradeAlgorithmically();
+    if (!transaction) {
+      console.log('The oracle has decided not to trade.');
+    } else {
+      // do ethers stuff with the transaction
+    }
+  } catch (error) {
+    console.error('THE BOT FAILED :*(');
+    console.error(error);
+  } finally {
+    console.log('Scheduling the next iteration...');
+    setTimeout(() => {
+      run(bot);
+    }, 1000 * 60);
+  }
+}
 
 (async function main() {
   console.log('STARTING IT UP');
-  const endpoint = loadEnv('KOVAN_PROVIDER_ENDPOINT');
-  const deployment = await getProvider(endpoint);
-
-  console.log(deployment && (deployment));
+  run(await EnzymeBot.create());
 })();
