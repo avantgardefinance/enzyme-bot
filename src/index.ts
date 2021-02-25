@@ -1,15 +1,14 @@
+import { THREE } from '@uniswap/sdk/dist/constants';
+import { utils } from 'ethers';
 import { EnzymeBot } from './EnzymeBot';
+import { getTokenBalance } from './utils/getTokenBalance';
 
 async function run(bot: EnzymeBot) {
   try {
-    const transaction = await bot.tradeAlgorithmically();
-    if (!transaction) {
-      console.log('The oracle has decided not to trade.');
-    } else {
-      // do ethers stuff with the transaction
-    }
+    const trades = await bot.tradeAlgorithmically()
+    return
   } catch (error) {
-    console.error('THE BOT FAILED :*(');
+    console.error('THE BOT FAILED :*(. Error below: ');
     console.error(error);
   } finally {
     console.log('Scheduling the next iteration...');
@@ -21,5 +20,5 @@ async function run(bot: EnzymeBot) {
 
 (async function main() {
   console.log('STARTING IT UP');
-  run(await EnzymeBot.create());
+  run(await EnzymeBot.create('MAINNET'));
 })();

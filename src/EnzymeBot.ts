@@ -7,6 +7,7 @@ import {
   takeOrderSelector,
   UniswapV2Adapter,
   uniswapV2TakeOrderArgs,
+  VaultLib,
   VaultProxy,
 } from '@enzymefinance/protocol';
 import { Trade } from '@uniswap/sdk';
@@ -14,28 +15,28 @@ import { BigNumber, BigNumberish, providers, Wallet } from 'ethers';
 import { getDeployment } from './utils/getDeployment';
 import { getProvider } from './utils/getProvider';
 import { getToken, getTokens } from './utils/getToken';
+import { getTokenBalance } from './utils/getTokenBalance';
 import { getWallet } from './utils/getWallet';
 import { loadEnv } from './utils/loadEnv';
 import { Asset, AssetsQuery, CurrentReleaseContractsQuery } from './utils/subgraph/subgraph';
-import { getTradeDetails } from './utils/uniswap/getTradeDetails';
+import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
 
 export class EnzymeBot {
-  public static async create() {
-    const network = loadEnv('NETWORK')
+  public static async create(network: 'KOVAN' | 'MAINNET') {
     const subgraphEndpoint =
       network === 'MAINNET' ? loadEnv('SUBGRAPH_ENDPOINT_MAINNET') : loadEnv('SUBGRAPH_ENDPOINT_KOVAN');
-    const key = network === 'MAINNET' ? loadEnv('MAINNET_KEY') : loadEnv('KOVAN_KEY');
+    const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('KOVAN_PRIVATE_KEY');
     const contracts = await getDeployment(subgraphEndpoint);
     const tokens = await getTokens(subgraphEndpoint);
-    const provider = getProvider(network as 'KOVAN' | 'MAINNET');
+    const provider = getProvider(network);
     const wallet = getWallet(key, provider);
-    const fundAddress = loadEnv('ENZYME_PRODUCT_ADDRESS');
+    const fundAddress = loadEnv('ENZYME_VAULT_ADDRESS');
 
     return new this(network, contracts, tokens, wallet, fundAddress, provider, subgraphEndpoint);
   }
 
   private constructor(
-    public readonly network: string,
+    public readonly network: 'KOVAN' | 'MAINNET',
     public readonly contracts: CurrentReleaseContractsQuery,
     public readonly tokens: AssetsQuery,
     public readonly wallet: Wallet,
@@ -46,86 +47,106 @@ export class EnzymeBot {
 
   public chooseRandomAsset() {
     const assets = this.tokens.assets;
-    const random = Math.random() * 100;
-    
-    if (!assets || random > assets.length) {
+    if (!assets) {
       return undefined;
     }
+
+    const length = assets.length;
+    const random = Math.floor(Math.random() * length);
+
     return assets[random];
   }
 
   public async getHoldings() {
-    const fund = new ComptrollerProxy(this.fundAddress, this.wallet);
-    const vaultAddress = await fund.getVaultProxy();
-    const vault = new VaultProxy(vaultAddress, this.wallet);
-    const holdings = await vault.getTrackedAssets();
-    return holdings?.map((item: string) => getToken(this.subgraphEndpoint, 'id', item));
+    const fund = new VaultLib(this.fundAddress, this.wallet);
+    const holdings = await fund.getTrackedAssets();
+    return Promise.all(holdings.map((item: string) => getToken(this.subgraphEndpoint, 'id', item.toLowerCase())));
   }
 
-  public async getPrice(buyToken: Asset, sellToken: Asset, sellTokenAmount: BigNumberish){
-    const details = await getTradeDetails(this.network as 'KOVAN' | 'MAINNET', this.provider, sellToken, buyToken, sellTokenAmount);
+  public async getPrice(buyToken: TokenBasics, sellToken: TokenBasics, sellTokenAmount: BigNumberish) {
+    const details = await getTradeDetails(this.network, this.provider, sellToken, buyToken, sellTokenAmount);
     return details;
   }
 
-  public async swapTokens(
-   trade: Trade
-  ) {
-    const tokenObjects = await Promise.all(
-      [sellToken, buyToken].map((token) => getToken(this.subgraphEndpoint, 'symbol', token))
-    );
-    // need minIncomingAssetAmount (normalized), outgoing amount, token addresses
-    const weth = await getToken(this.subgraphEndpoint, 'symbol', 'WETH');
-    const tokensLengthIsNotTwo = tokenObjects.length !== 2;
-    const tokensAreUndefined = tokenObjects.some((token) => token === undefined);
-
-    if (tokensLengthIsNotTwo || tokensAreUndefined || !weth) {
-      // errror out because you can't find the correct tokens
-      return;
-    }
+  public async swapTokens(trade: Trade) {
+    // construct an array of addresses through which Uniswap will trade
+    const path = trade.route.path.map((item) => item.address);
 
     const takeOrderArgs = uniswapV2TakeOrderArgs({
-      // check route property on trade object for path
-      path: trade.route,
-      minIncomingAssetAmount: BigNumber.from(trade),
+      path,
+      minIncomingAssetAmount: BigNumber.from(trade.outputAmount),
       outgoingAssetAmount: BigNumber.from(trade.inputAmount),
     });
 
-    const callArgs = callOnIntegrationArgs({
-      adapter: UniswapV2Adapter,
-      selector: takeOrderSelector,
-      encodedCallArgs: takeOrderArgs,
-    });
+    const adapter = this.contracts.network?.currentRelease?.uniswapV2Adapter;
+    const integrationManager = this.contracts.network?.currentRelease?.integrationManager;
+
+    if (!adapter || !integrationManager) {
+      console.log(
+        'Missing a contract address. Uniswap Adapter: ',
+        adapter,
+        ' Integraition Manager: ',
+        integrationManager
+      );
+      return;
+    }
+
+    const callArgs =
+      adapter &&
+      callOnIntegrationArgs({
+        adapter,
+        selector: takeOrderSelector,
+        encodedCallArgs: takeOrderArgs,
+      });
 
     const contract = new ComptrollerLib(this.fundAddress, this.wallet);
-    
-    return contract.callOnExtension.args(
-      IntegrationManager,
-      IntegrationManagerActionId.CallOnIntegration,
-      callArgs
-    );
 
-    // figure out the rest of the transaction logic.
+    return contract.callOnExtension.args(integrationManager, IntegrationManagerActionId.CallOnIntegration, callArgs);
   }
 
   public async tradeAlgorithmically() {
-    // choose a random asset - if it comes back undefined, return and do nothing
-    const randomAsset = this.chooseRandomAsset();
+    // get a random token
+    const randomToken = this.chooseRandomAsset();
 
-    if (randomAsset === undefined) {
-      console.log('An appropriate asset could not be found.');
+    console.log(randomToken)
+
+    // if no random token return
+    if (!randomToken || randomToken.derivativeType) {
+      console.log("The Miner's Delight did not find an appropriate token to buy.");
       return;
     }
 
-    // check your fund's holdings - should only be one asset
-    const currentHoldings = await this.getHoldings();
+    // get your fund's holdings
+    const vaultHoldings = await this.getHoldings();
 
-    if (currentHoldings?.length > 1) {
-      console.log('The bot has detected unknown assets in the fund.');
+    // if you have no holdings, return
+    if (vaultHoldings.length === 0) {
+      console.log('Your fund has no assets.');
       return;
     }
-    // get a price from uniswap to swap all of your current asset for the random asset
-    const priceToSwap = await this.getPrice(randomAsset, currentHoldings[0].token, currentHoldings[0].amount);
-    // do that trade
-    return this.swapTokens(priceToSwap)
+
+    // get the amount of each holding
+    const holdingAmounts = await Promise.all(
+      vaultHoldings.map((holding) => getTokenBalance(this.fundAddress, holding!.id, this.network))
+    );
+
+    // combine them
+    const holdingsWithAmounts = vaultHoldings.map((item, index) => {
+      return { ...item, amount: holdingAmounts[index] };
+    });
+
+    // check rates
+    const prices = await Promise.all(
+      holdingsWithAmounts.map((holding) =>
+        this.getPrice(
+          { id: randomToken.id, decimals: randomToken.decimals },
+          { id: holding.id, decimals: holding.decimals },
+          holding.amount
+        )
+      )
+    );
+
+    console.log(prices);
+    return;
   }
 }
