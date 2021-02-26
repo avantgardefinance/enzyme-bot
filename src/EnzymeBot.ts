@@ -1,17 +1,13 @@
 import {
   callOnIntegrationArgs,
   ComptrollerLib,
-  ComptrollerProxy,
-  IntegrationManager,
   IntegrationManagerActionId,
   takeOrderSelector,
-  UniswapV2Adapter,
   uniswapV2TakeOrderArgs,
   VaultLib,
-  VaultProxy,
 } from '@enzymefinance/protocol';
 import { Trade } from '@uniswap/sdk';
-import { BigNumber, BigNumberish, providers, Wallet } from 'ethers';
+import { BigNumber, BigNumberish, providers, utils, Wallet } from 'ethers';
 import { getDeployment } from './utils/getDeployment';
 import { getProvider } from './utils/getProvider';
 import { getToken, getTokens } from './utils/getToken';
@@ -30,9 +26,10 @@ export class EnzymeBot {
     const tokens = await getTokens(subgraphEndpoint);
     const provider = getProvider(network);
     const wallet = getWallet(key, provider);
-    const fundAddress = loadEnv('ENZYME_VAULT_ADDRESS');
+    const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
+    const comptrollerAddress = loadEnv('ENZYME_COMPTROLLER_ADDRESS');
 
-    return new this(network, contracts, tokens, wallet, fundAddress, provider, subgraphEndpoint);
+    return new this(network, contracts, tokens, wallet, vaultAddress, comptrollerAddress, provider, subgraphEndpoint);
   }
 
   private constructor(
@@ -40,14 +37,16 @@ export class EnzymeBot {
     public readonly contracts: CurrentReleaseContractsQuery,
     public readonly tokens: AssetsQuery,
     public readonly wallet: Wallet,
-    public readonly fundAddress: string,
+    public readonly vaultAddress: string,
+    public readonly comptrollerAddress: string,
     public readonly provider: providers.BaseProvider,
     public readonly subgraphEndpoint: string
   ) {}
 
   public chooseRandomAsset() {
-    const assets = this.tokens.assets;
-    if (!assets) {
+    const assets = this.tokens.assets.filter((asset) => !asset.derivativeType);
+
+    if (!assets || assets.length === 0) {
       return undefined;
     }
 
@@ -58,7 +57,7 @@ export class EnzymeBot {
   }
 
   public async getHoldings() {
-    const fund = new VaultLib(this.fundAddress, this.wallet);
+    const fund = new VaultLib(this.vaultAddress, this.wallet);
     const holdings = await fund.getTrackedAssets();
     return Promise.all(holdings.map((item: string) => getToken(this.subgraphEndpoint, 'id', item.toLowerCase())));
   }
@@ -70,12 +69,22 @@ export class EnzymeBot {
 
   public async swapTokens(trade: Trade) {
     // construct an array of addresses through which Uniswap will trade
+
     const path = trade.route.path.map((item) => item.address);
+
+    const outgoingAssetAmount = utils.parseUnits(
+      trade.inputAmount.toFixed(trade.route.input.decimals),
+      trade.route.input.decimals
+    );
+    const minIncomingAssetAmount = utils.parseUnits(
+      trade.outputAmount.toFixed(trade.route.output.decimals),
+      trade.route.output.decimals
+    );
 
     const takeOrderArgs = uniswapV2TakeOrderArgs({
       path,
-      minIncomingAssetAmount: BigNumber.from(trade.outputAmount),
-      outgoingAssetAmount: BigNumber.from(trade.inputAmount),
+      minIncomingAssetAmount,
+      outgoingAssetAmount,
     });
 
     const adapter = this.contracts.network?.currentRelease?.uniswapV2Adapter;
@@ -85,7 +94,7 @@ export class EnzymeBot {
       console.log(
         'Missing a contract address. Uniswap Adapter: ',
         adapter,
-        ' Integraition Manager: ',
+        ' Integration Manager: ',
         integrationManager
       );
       return;
@@ -99,7 +108,7 @@ export class EnzymeBot {
         encodedCallArgs: takeOrderArgs,
       });
 
-    const contract = new ComptrollerLib(this.fundAddress, this.wallet);
+    const contract = new ComptrollerLib(this.comptrollerAddress, this.wallet);
 
     return contract.callOnExtension.args(integrationManager, IntegrationManagerActionId.CallOnIntegration, callArgs);
   }
@@ -108,7 +117,7 @@ export class EnzymeBot {
     // get a random token
     const randomToken = this.chooseRandomAsset();
 
-    console.log(randomToken)
+    console.log(randomToken);
 
     // if no random token return
     if (!randomToken || randomToken.derivativeType) {
@@ -127,7 +136,7 @@ export class EnzymeBot {
 
     // get the amount of each holding
     const holdingAmounts = await Promise.all(
-      vaultHoldings.map((holding) => getTokenBalance(this.fundAddress, holding!.id, this.network))
+      vaultHoldings.map((holding) => getTokenBalance(this.vaultAddress, holding!.id, this.network))
     );
 
     // combine them
@@ -136,17 +145,24 @@ export class EnzymeBot {
     });
 
     // check rates
-    const prices = await Promise.all(
-      holdingsWithAmounts.map((holding) =>
-        this.getPrice(
-          { id: randomToken.id, decimals: randomToken.decimals },
-          { id: holding.id, decimals: holding.decimals },
-          holding.amount
-        )
-      )
+    const biggestPosition = holdingsWithAmounts.reduce((carry, current) => {
+      if (current.amount.gte(carry.amount)) {
+        return current;
+      }
+      return carry;
+    }, holdingsWithAmounts[0]);
+
+    const price = await this.getPrice(
+      { id: randomToken.id, decimals: randomToken.decimals, symbol: randomToken.symbol, name: randomToken.name },
+      {
+        id: biggestPosition.id,
+        decimals: biggestPosition.decimals,
+        symbol: biggestPosition.symbol,
+        name: biggestPosition.name,
+      },
+      biggestPosition.amount
     );
 
-    console.log(prices);
-    return;
+    return this.swapTokens(price);
   }
 }
