@@ -1,5 +1,5 @@
 import { ChainId, Token, Fetcher, Trade, Route, TokenAmount, TradeType, WETH } from '@uniswap/sdk';
-import { BigNumberish, providers, utils } from 'ethers';
+import { BigNumber, BigNumberish, providers, utils } from 'ethers';
 
 export interface TokenBasics {
   id: string;
@@ -15,6 +15,28 @@ export async function getTradeDetails(
   buyToken: TokenBasics,
   sellTokenAmount: BigNumberish
 ) {
+  // return path and min amount
+
+  if (network === 'KOVAN') {
+    // take direct route sell > buy
+    const path = [sellToken.id, buyToken.id];
+    const minIncomingAssetAmount = BigNumber.from(0);
+    const outgoingAssetAmount = sellTokenAmount;
+
+    return {
+      path,
+      minIncomingAssetAmount,
+      outgoingAssetAmount,
+    };
+    // incoming asset amount => 0
+  }
+  // check if incoming or outgoing is WETH, if it is, path.length == 2, if not put weth in the middle
+  // add note to blog post about assumptions regarding WETH and potential for optimization
+
+  const oneTokenIsWeth =
+    utils.getAddress(sellToken.id).toLowerCase() === WETH[ChainId.MAINNET].address.toLowerCase() ||
+    utils.getAddress(buyToken.id).toLowerCase() === WETH[ChainId.MAINNET].address.toLowerCase();
+
   const outgoingToken = new Token(
     ChainId[network],
     utils.getAddress(sellToken.id),
@@ -22,7 +44,7 @@ export async function getTradeDetails(
     sellToken.symbol,
     sellToken.name
   );
-  
+
   const incomingToken = new Token(
     ChainId[network],
     utils.getAddress(buyToken.id),
@@ -30,11 +52,30 @@ export async function getTradeDetails(
     buyToken.symbol,
     buyToken.name
   );
-  
-  const pair1 = await Fetcher.fetchPairData(outgoingToken, WETH[outgoingToken.chainId]);
-  const pair2 = await Fetcher.fetchPairData(WETH[incomingToken.chainId], incomingToken);
-  const route = new Route([pair1, pair2], outgoingToken);
+
+  let route: Route | null = null;
+
+  if (oneTokenIsWeth) {
+    const pair0 = await Fetcher.fetchPairData(outgoingToken, incomingToken);
+    route = new Route([pair0], outgoingToken);
+  } else {
+    const pair1 = await Fetcher.fetchPairData(outgoingToken, WETH[outgoingToken.chainId]);
+    const pair2 = await Fetcher.fetchPairData(WETH[incomingToken.chainId], incomingToken);
+    route = new Route([pair1, pair2], outgoingToken);
+  }
+
   const tokenOutAmount = new TokenAmount(outgoingToken, sellTokenAmount.toString());
-  
-  return new Trade(route, tokenOutAmount, TradeType.EXACT_INPUT);
+  const trade = new Trade(route, tokenOutAmount, TradeType.EXACT_INPUT);
+
+  const outgoingAssetAmount = utils.parseUnits(
+    trade.inputAmount.toFixed(trade.route.input.decimals),
+    trade.route.input.decimals
+  );
+  const minIncomingAssetAmount = utils.parseUnits(
+    trade.outputAmount.toFixed(trade.route.output.decimals),
+    trade.route.output.decimals
+  );
+  const path = trade.route.path.map((token) => token.address);
+
+  return { path, outgoingAssetAmount, minIncomingAssetAmount };
 }
