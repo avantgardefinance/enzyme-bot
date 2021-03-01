@@ -18,6 +18,7 @@
     "@crestproject/ethers": "^0.1.21",
     "@enzymefinance/protocol": "^2.0.0",
     "@uniswap/sdk": "^3.0.3",
+    "axios": "^0.21.1",
     "ethers": "^5.0.30",
     "ethers-eip712": "^0.2.0",
     "graphql": "^15.5.0",
