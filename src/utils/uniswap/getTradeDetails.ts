@@ -1,5 +1,5 @@
 import { ChainId, Token, Fetcher, Trade, Route, TokenAmount, TradeType, WETH } from '@uniswap/sdk';
-import { BigNumber, BigNumberish, providers, utils } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 
 export interface TokenBasics {
   id: string;
@@ -10,15 +10,12 @@ export interface TokenBasics {
 
 export async function getTradeDetails(
   network: 'KOVAN' | 'MAINNET',
-  provider: providers.BaseProvider,
   sellToken: TokenBasics,
   buyToken: TokenBasics,
-  sellTokenAmount: BigNumberish
+  sellTokenAmount: BigNumber
 ) {
-  // return path and min amount
 
   if (network === 'KOVAN') {
-    // take direct route sell > buy
     const path = [sellToken.id, buyToken.id];
     const minIncomingAssetAmount = BigNumber.from(0);
     const outgoingAssetAmount = sellTokenAmount;
@@ -28,9 +25,8 @@ export async function getTradeDetails(
       minIncomingAssetAmount,
       outgoingAssetAmount,
     };
-    // incoming asset amount => 0
   }
-  // check if incoming or outgoing is WETH, if it is, path.length == 2, if not put weth in the middle
+
   // add note to blog post about assumptions regarding WETH and potential for optimization
 
   const oneTokenIsWeth =

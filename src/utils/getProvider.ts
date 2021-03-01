@@ -2,6 +2,6 @@ import { providers } from 'ethers';
 import { loadEnv } from './loadEnv';
 
 export function getProvider(network: 'MAINNET' | 'KOVAN') {
-  const key = loadEnv(`${network}_PROVIDER_API_KEY`);
-  return providers.getDefaultProvider(network.toLowerCase(), { alchemy: key });
+  const node = loadEnv(`${network}_NODE_ENDPOINT`)
+  return new providers.StaticJsonRpcProvider(node, network.toLowerCase());
 }

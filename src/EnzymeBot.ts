@@ -5,6 +5,7 @@ import {
   takeOrderSelector,
   uniswapV2TakeOrderArgs,
   VaultLib,
+  VaultProxy,
 } from '@enzymefinance/protocol';
 import { Trade } from '@uniswap/sdk';
 import { BigNumber, BigNumberish, providers, utils, Wallet } from 'ethers';
@@ -14,7 +15,7 @@ import { getToken, getTokens } from './utils/getToken';
 import { getTokenBalance } from './utils/getTokenBalance';
 import { getWallet } from './utils/getWallet';
 import { loadEnv } from './utils/loadEnv';
-import { Asset, AssetsQuery, CurrentReleaseContractsQuery } from './utils/subgraph/subgraph';
+import { AssetsQuery, CurrentReleaseContractsQuery } from './utils/subgraph/subgraph';
 import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
 
 export class EnzymeBot {
@@ -24,7 +25,7 @@ export class EnzymeBot {
     const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('KOVAN_PRIVATE_KEY');
     const contracts = await getDeployment(subgraphEndpoint);
     const tokens = await getTokens(subgraphEndpoint);
-    const provider = getProvider(network);
+    const provider = getProvider(network);    
     const wallet = getWallet(key, provider);
     const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
     const comptrollerAddress = loadEnv('ENZYME_COMPTROLLER_ADDRESS');
@@ -39,7 +40,7 @@ export class EnzymeBot {
     public readonly wallet: Wallet,
     public readonly vaultAddress: string,
     public readonly comptrollerAddress: string,
-    public readonly provider: providers.BaseProvider,
+    public readonly provider: providers.JsonRpcProvider,
     public readonly subgraphEndpoint: string
   ) {}
 
@@ -62,30 +63,13 @@ export class EnzymeBot {
     return Promise.all(holdings.map((item: string) => getToken(this.subgraphEndpoint, 'id', item.toLowerCase())));
   }
 
-  public async getPrice(buyToken: TokenBasics, sellToken: TokenBasics, sellTokenAmount: BigNumberish) {
-    const details = await getTradeDetails(this.network, this.provider, sellToken, buyToken, sellTokenAmount);
+  public async getPrice(buyToken: TokenBasics, sellToken: TokenBasics, sellTokenAmount: BigNumber) {
+    const details = await getTradeDetails(this.network, sellToken, buyToken, sellTokenAmount);
+
     return details;
   }
 
-  public async swapTokens(trade: Trade) {
-    // construct an array of addresses through which Uniswap will trade
-
-    const path = trade.route.path.map((item) => item.address);
-
-    const outgoingAssetAmount = utils.parseUnits(
-      trade.inputAmount.toFixed(trade.route.input.decimals),
-      trade.route.input.decimals
-    );
-    const minIncomingAssetAmount = utils.parseUnits(
-      trade.outputAmount.toFixed(trade.route.output.decimals),
-      trade.route.output.decimals
-    );
-
-    const takeOrderArgs = uniswapV2TakeOrderArgs({
-      path,
-      minIncomingAssetAmount,
-      outgoingAssetAmount,
-    });
+  public async swapTokens(trade: {path: string[], minIncomingAssetAmount: BigNumber, outgoingAssetAmount: BigNumber}) {
 
     const adapter = this.contracts.network?.currentRelease?.uniswapV2Adapter;
     const integrationManager = this.contracts.network?.currentRelease?.integrationManager;
@@ -100,8 +84,13 @@ export class EnzymeBot {
       return;
     }
 
+    const takeOrderArgs = uniswapV2TakeOrderArgs({
+      path: trade.path,
+      minIncomingAssetAmount: trade.minIncomingAssetAmount,
+      outgoingAssetAmount: trade.outgoingAssetAmount,
+    });
+
     const callArgs =
-      adapter &&
       callOnIntegrationArgs({
         adapter,
         selector: takeOrderSelector,
@@ -162,6 +151,7 @@ export class EnzymeBot {
       },
       biggestPosition.amount
     );
+
 
     return this.swapTokens(price);
   }
