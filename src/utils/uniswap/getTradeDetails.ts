@@ -67,10 +67,12 @@ export async function getTradeDetails(
     trade.inputAmount.toFixed(trade.route.input.decimals),
     trade.route.input.decimals
   );
-  const minIncomingAssetAmount = utils.parseUnits(
-    trade.outputAmount.toFixed(trade.route.output.decimals),
-    trade.route.output.decimals
-  );
+
+  const minIncomingAssetAmount = utils
+    .parseUnits(trade.outputAmount.toFixed(trade.route.output.decimals), trade.route.output.decimals)
+    .mul(98)
+    .div(100);
+
   const path = trade.route.path.map((token) => token.address);
 
   return { path, outgoingAssetAmount, minIncomingAssetAmount };
