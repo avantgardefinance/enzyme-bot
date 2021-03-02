@@ -6,6 +6,8 @@ async function run(bot: EnzymeBot) {
   try {
     // return the transaction logic
     const tx = await bot.tradeAlgorithmically();
+
+    // if for some reason the transaction is returned as undefined, return 
     if (!tx) {
       console.log('The bot has decided not to trade');
       return;
@@ -17,7 +19,7 @@ async function run(bot: EnzymeBot) {
     // get gas limit ()
     const gasLimit = await (await tx.estimate()).mul(10).div(9);
 
-    // if sent to false it'll give you the tx object that contains the hash
+    // if send is set to false it'll give you the tx object that contains the hash
     const receipt = await tx.gas(gasLimit).send(false);
 
     console.log('This trade has been submitted to the blockchain. TRANSACTION HASH ==>', receipt.hash);

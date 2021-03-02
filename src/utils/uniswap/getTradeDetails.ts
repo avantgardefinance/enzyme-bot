@@ -29,8 +29,6 @@ export async function getTradeDetails(
     };
   }
 
-  // add note to blog post about assumptions regarding WETH and potential for optimization
-
   const oneTokenIsWeth =
     utils.getAddress(sellToken.id).toLowerCase() === WETH[ChainId.MAINNET].address.toLowerCase() ||
     utils.getAddress(buyToken.id).toLowerCase() === WETH[ChainId.MAINNET].address.toLowerCase();

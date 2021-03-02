@@ -5,10 +5,8 @@ import {
   takeOrderSelector,
   uniswapV2TakeOrderArgs,
   VaultLib,
-  VaultProxy,
 } from '@enzymefinance/protocol';
-import { Trade } from '@uniswap/sdk';
-import { BigNumber, BigNumberish, providers, utils, Wallet } from 'ethers';
+import { BigNumber, providers, utils, Wallet } from 'ethers';
 import { getDeployment } from './utils/getDeployment';
 import { getProvider } from './utils/getProvider';
 import { getToken, getTokens } from './utils/getToken';
@@ -21,7 +19,7 @@ import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
 export class EnzymeBot {
   public static async create(network: 'KOVAN' | 'MAINNET') {
     const subgraphEndpoint =
-      network === 'MAINNET' ? loadEnv('SUBGRAPH_ENDPOINT_MAINNET') : loadEnv('SUBGRAPH_ENDPOINT_KOVAN');
+      network === 'MAINNET' ? loadEnv('MAINNET_ENDPOINT_MAINNET') : loadEnv('KOVAN_SUBGRAPH_ENDPOINT');
     const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('KOVAN_PRIVATE_KEY');
     const contracts = await getDeployment(subgraphEndpoint);
     const tokens = await getTokens(subgraphEndpoint);
@@ -86,7 +84,7 @@ export class EnzymeBot {
       );
       return;
     }
-    
+
     const takeOrderArgs = uniswapV2TakeOrderArgs({
       path: trade.path,
       minIncomingAssetAmount: trade.minIncomingAssetAmount,
@@ -108,7 +106,7 @@ export class EnzymeBot {
     // get a random token
     const randomToken = this.chooseRandomAsset();
 
-    // if no random token return
+    // if no random token return, or if the random token is a derivative that's not available on Uniswap
     if (!randomToken || randomToken.derivativeType) {
       console.log("The Miner's Delight did not find an appropriate token to buy.");
       return;
@@ -123,17 +121,23 @@ export class EnzymeBot {
       return;
     }
 
+    // if your vault already holds the random token, return
+    if (vaultHoldings.map((holding) => holding?.id.toLowerCase()).includes(randomToken.id.toLowerCase())) {
+      console.log("You already hold the asset that the Miner's Delight randomly selected.");
+      return;
+    }
+
     // get the amount of each holding
     const holdingAmounts = await Promise.all(
       vaultHoldings.map((holding) => getTokenBalance(this.vaultAddress, holding!.id, this.network))
     );
 
-    // combine them
+    // combine holding token data with amounts
     const holdingsWithAmounts = vaultHoldings.map((item, index) => {
       return { ...item, amount: holdingAmounts[index] };
     });
 
-    // check rates
+    // find the token you will sell by searching for largest token holding
     const biggestPosition = holdingsWithAmounts.reduce((carry, current) => {
       if (current.amount.gte(carry.amount)) {
         return current;
@@ -142,11 +146,15 @@ export class EnzymeBot {
     }, holdingsWithAmounts[0]);
 
     console.log(
-      `The Miner's Delight has chosen. You will trade ${utils.formatUnits(biggestPosition.amount, biggestPosition.decimals)} ${
-        biggestPosition.name
-      } (${biggestPosition.symbol}) for as many ${randomToken.name} (${randomToken.symbol}) as you can get.`
+      `The Miner's Delight has chosen. You will trade ${utils.formatUnits(
+        biggestPosition.amount,
+        biggestPosition.decimals
+      )} ${biggestPosition.name} (${biggestPosition.symbol}) for as many ${randomToken.name} (${
+        randomToken.symbol
+      }) as you can get.`
     );
 
+    // get the trade data
     const price = await this.getPrice(
       { id: randomToken.id, decimals: randomToken.decimals, symbol: randomToken.symbol, name: randomToken.name },
       {
@@ -158,6 +166,7 @@ export class EnzymeBot {
       biggestPosition.amount
     );
 
+    // call the transaction
     return this.swapTokens(price);
   }
 }
