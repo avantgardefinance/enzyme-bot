@@ -56,8 +56,8 @@ export class EnzymeBot {
   }
 
   public async getHoldings() {
-    const fund = new VaultLib(this.vaultAddress, this.wallet);
-    const holdings = await fund.getTrackedAssets();
+    const vault = new VaultLib(this.vaultAddress, this.wallet);
+    const holdings = await vault.getTrackedAssets();
     return Promise.all(holdings.map((item: string) => getToken(this.subgraphEndpoint, 'id', item.toLowerCase())));
   }
 
