@@ -19,7 +19,7 @@ import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
 export class EnzymeBot {
   public static async create(network: 'KOVAN' | 'MAINNET') {
     const subgraphEndpoint =
-      network === 'MAINNET' ? loadEnv('MAINNET_ENDPOINT_MAINNET') : loadEnv('KOVAN_SUBGRAPH_ENDPOINT');
+      network === 'MAINNET' ? loadEnv('MAINNET_SUBGRAPH_ENDPOINT') : loadEnv('KOVAN_SUBGRAPH_ENDPOINT');
     const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('KOVAN_PRIVATE_KEY');
     const contracts = await getDeployment(subgraphEndpoint);
     const tokens = await getTokens(subgraphEndpoint);
