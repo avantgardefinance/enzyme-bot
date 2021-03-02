@@ -4,7 +4,7 @@ import { getRevertError } from './utils/getRevertError';
 
 async function run(bot: EnzymeBot) {
   try {
-    // return the transaction logic
+    // return the transaction object
     const tx = await bot.tradeAlgorithmically();
 
     // if for some reason the transaction is returned as undefined, return 
@@ -13,7 +13,7 @@ async function run(bot: EnzymeBot) {
       return;
     }
 
-    // verifies you can send the tx - get an exception if it doesn't validate
+    // verifies you can send the tx - throws an exception if it doesn't validate
     await tx.call();
 
     // get gas limit ()
@@ -31,7 +31,7 @@ async function run(bot: EnzymeBot) {
 
     return;
   } catch (error) {
-    console.error('THE BOT FAILED :*(. Human-readable error below: ');
+    console.error('THE BOT FAILED :*(. Error below: ');
 
     if (error.error.data) {
       console.log(getRevertError(error.error.data));
