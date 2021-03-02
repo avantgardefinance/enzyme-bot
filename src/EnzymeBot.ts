@@ -25,7 +25,7 @@ export class EnzymeBot {
     const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('KOVAN_PRIVATE_KEY');
     const contracts = await getDeployment(subgraphEndpoint);
     const tokens = await getTokens(subgraphEndpoint);
-    const provider = getProvider(network);    
+    const provider = getProvider(network);
     const wallet = getWallet(key, provider);
     const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
     const comptrollerAddress = loadEnv('ENZYME_COMPTROLLER_ADDRESS');
@@ -69,8 +69,11 @@ export class EnzymeBot {
     return details;
   }
 
-  public async swapTokens(trade: {path: string[], minIncomingAssetAmount: BigNumber, outgoingAssetAmount: BigNumber}) {
-
+  public async swapTokens(trade: {
+    path: string[];
+    minIncomingAssetAmount: BigNumber;
+    outgoingAssetAmount: BigNumber;
+  }) {
     const adapter = this.contracts.network?.currentRelease?.uniswapV2Adapter;
     const integrationManager = this.contracts.network?.currentRelease?.integrationManager;
 
@@ -83,19 +86,18 @@ export class EnzymeBot {
       );
       return;
     }
-
+    
     const takeOrderArgs = uniswapV2TakeOrderArgs({
       path: trade.path,
       minIncomingAssetAmount: trade.minIncomingAssetAmount,
       outgoingAssetAmount: trade.outgoingAssetAmount,
     });
 
-    const callArgs =
-      callOnIntegrationArgs({
-        adapter,
-        selector: takeOrderSelector,
-        encodedCallArgs: takeOrderArgs,
-      });
+    const callArgs = callOnIntegrationArgs({
+      adapter,
+      selector: takeOrderSelector,
+      encodedCallArgs: takeOrderArgs,
+    });
 
     const contract = new ComptrollerLib(this.comptrollerAddress, this.wallet);
 
@@ -105,8 +107,6 @@ export class EnzymeBot {
   public async tradeAlgorithmically() {
     // get a random token
     const randomToken = this.chooseRandomAsset();
-
-    console.log(randomToken);
 
     // if no random token return
     if (!randomToken || randomToken.derivativeType) {
@@ -141,6 +141,12 @@ export class EnzymeBot {
       return carry;
     }, holdingsWithAmounts[0]);
 
+    console.log(
+      `The Miner's Delight has chosen. You will trade ${utils.formatUnits(biggestPosition.amount, biggestPosition.decimals)} ${
+        biggestPosition.name
+      } (${biggestPosition.symbol}) for as many ${randomToken.name} (${randomToken.symbol}) as you can get.`
+    );
+
     const price = await this.getPrice(
       { id: randomToken.id, decimals: randomToken.decimals, symbol: randomToken.symbol, name: randomToken.name },
       {
@@ -151,7 +157,6 @@ export class EnzymeBot {
       },
       biggestPosition.amount
     );
-
 
     return this.swapTokens(price);
   }

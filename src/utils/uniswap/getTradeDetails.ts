@@ -14,10 +14,12 @@ export async function getTradeDetails(
   buyToken: TokenBasics,
   sellTokenAmount: BigNumber
 ) {
-
   if (network === 'KOVAN') {
     const path = [sellToken.id, buyToken.id];
-    const minIncomingAssetAmount = BigNumber.from(0);
+    const minIncomingAssetAmount = utils
+      .parseUnits('1', buyToken.decimals)
+      .mul(BigNumber.from(10).pow(buyToken.decimals))
+      .div(BigNumber.from(10).pow(buyToken.decimals * 2 - 1));
     const outgoingAssetAmount = sellTokenAmount;
 
     return {
