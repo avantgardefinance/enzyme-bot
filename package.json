@@ -13,9 +13,7 @@
     "codegen": "dotenv -- graphql-codegen --config codegen.yaml"
   },
   "dependencies": {
-    "@crestproject/crestproject": "^0.1.21",
-    "@crestproject/ethers": "^0.1.21",
-    "@enzymefinance/protocol": "^2.0.0",
+    "@enzymefinance/protocol": "^2.0.1",
     "@uniswap/sdk": "^3.0.3",
     "axios": "^0.21.1",
     "ethers": "^5.0.30",
