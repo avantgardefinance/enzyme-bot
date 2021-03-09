@@ -158,10 +158,10 @@ export class EnzymeBot {
     const price = await this.getPrice(
       { id: randomToken.id, decimals: randomToken.decimals, symbol: randomToken.symbol, name: randomToken.name },
       {
-        id: biggestPosition.id,
-        decimals: biggestPosition.decimals,
-        symbol: biggestPosition.symbol,
-        name: biggestPosition.name,
+        id: biggestPosition.id as string,
+        decimals: biggestPosition.decimals as number,
+        symbol: biggestPosition.symbol as string,
+        name: biggestPosition.name as string,
       },
       biggestPosition.amount
     );
