@@ -11,15 +11,15 @@ query assets {
       price
       timestamp
     }
-    compoundAssetDetail {
-      underlying {
-        id
-        symbol
-        name
-        decimals
-      }
+
+    underlyingAsset {
+      id
+      symbol
+      name
+      decimals
     }
-    uniswapV2PoolAssetDetail {
+
+    uniswapV2PoolAssetDetails {
       token0 {
         id
         symbol
