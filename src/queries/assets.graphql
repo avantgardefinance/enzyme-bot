@@ -4,9 +4,11 @@ query assets {
     name
     symbol
     decimals
-    removed
     type
     derivativeType
+    releases {
+      id
+    }
     price {
       price
       timestamp
