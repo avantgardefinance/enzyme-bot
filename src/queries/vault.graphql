@@ -1,0 +1,10 @@
+query vault($id: ID!) {
+  fund(id: $id) {
+    release {
+      id
+    }
+    accessor {
+      id
+    }
+  }
+}
