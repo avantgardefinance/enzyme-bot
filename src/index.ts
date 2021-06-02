@@ -36,12 +36,12 @@ async function run(bot: EnzymeBot) {
   } catch (error) {
     console.error('THE BOT FAILED :*(. Error below: ');
 
-    if (error.error.data) {
+    if (error.error?.data) {
       console.log(getRevertError(error.error.data));
       return;
     }
 
-    if (error.error.message) {
+    if (error.error?.message) {
       console.log(error.error.message);
       return;
     }
