@@ -16,6 +16,8 @@ Start out on Kovan to get a feel for how this bot works. Change the strategy in 
 
 ## Change Log
 
+### 2 June 2021
+
 The Medium post that originally accompanied this bot is *mostly* still accurate, however given a few changes in the protocol due to an upgrade in May 2021, I've updated a few things.
 
 The bot constructor now calls a new subgraph query to populate a `vault` property on the class. This property holds the addresses of both the vault's Comptroller Proxy and the Fund Deployer with which that Comptroller Proxy was... deployed. This is referred to as `release`, and is how we identify on which version of the protocol the Vault is currently deployed. This query serves two purposes - we eliminate an environment variable (the comptroller proxy address), and we can use the release id to filter out assets which the bot will trade; not all assets are avaiable on all releases. 
