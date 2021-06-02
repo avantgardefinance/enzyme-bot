@@ -4,6 +4,7 @@ import {
   IntegrationManagerActionId,
   takeOrderSelector,
   uniswapV2TakeOrderArgs,
+  ValueInterpreter,
   VaultLib,
 } from '@enzymefinance/protocol';
 import { BigNumber, providers, utils, Wallet } from 'ethers';
@@ -11,9 +12,10 @@ import { getDeployment } from './utils/getDeployment';
 import { getProvider } from './utils/getProvider';
 import { getToken, getTokens } from './utils/getToken';
 import { getTokenBalance } from './utils/getTokenBalance';
+import { getVaultInfo } from './utils/getVault';
 import { getWallet } from './utils/getWallet';
 import { loadEnv } from './utils/loadEnv';
-import { AssetsQuery, CurrentReleaseContractsQuery } from './utils/subgraph/subgraph';
+import { AssetsQuery, CurrentReleaseContractsQuery, VaultQuery } from './utils/subgraph/subgraph';
 import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
 
 export class EnzymeBot {
@@ -26,9 +28,9 @@ export class EnzymeBot {
     const provider = getProvider(network);
     const wallet = getWallet(key, provider);
     const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
-    const comptrollerAddress = loadEnv('ENZYME_COMPTROLLER_ADDRESS');
+    const vault = await getVaultInfo(subgraphEndpoint, vaultAddress);
 
-    return new this(network, contracts, tokens, wallet, vaultAddress, comptrollerAddress, provider, subgraphEndpoint);
+    return new this(network, contracts, tokens, wallet, vaultAddress, vault, provider, subgraphEndpoint);
   }
 
   private constructor(
@@ -37,22 +39,35 @@ export class EnzymeBot {
     public readonly tokens: AssetsQuery,
     public readonly wallet: Wallet,
     public readonly vaultAddress: string,
-    public readonly comptrollerAddress: string,
+    public readonly vault: VaultQuery,
     public readonly provider: providers.JsonRpcProvider,
     public readonly subgraphEndpoint: string
   ) {}
 
-  public chooseRandomAsset() {
+  public async chooseRandomAsset() {
+    const comptrollerAddress = this.vault.fund?.accessor.id;
+    const release = this.vault.fund?.release.id
+
+    if (!comptrollerAddress || !release) {
+      return undefined;
+    }
+    
+    const comptroller = new ComptrollerLib(comptrollerAddress, this.wallet);
+    
     const assets = this.tokens.assets.filter((asset) => !asset.derivativeType);
 
-    if (!assets || assets.length === 0) {
+    const releaseAssets = assets.filter((asset) =>
+      asset.releases.map((innerRelease) => innerRelease.id).includes(release)
+    );
+
+    if (!releaseAssets || releaseAssets.length === 0) {
       return undefined;
     }
 
-    const length = assets.length;
+    const length = releaseAssets.length;
     const random = Math.floor(Math.random() * length);
 
-    return assets[random];
+    return releaseAssets[random];
   }
 
   public async getHoldings() {
@@ -74,8 +89,9 @@ export class EnzymeBot {
   }) {
     const adapter = this.contracts.network?.currentRelease?.uniswapV2Adapter;
     const integrationManager = this.contracts.network?.currentRelease?.integrationManager;
-
-    if (!adapter || !integrationManager) {
+    const comptroller = this.vault.fund?.accessor.id
+    
+    if (!adapter || !integrationManager || !comptroller) {
       console.log(
         'Missing a contract address. Uniswap Adapter: ',
         adapter,
@@ -97,14 +113,14 @@ export class EnzymeBot {
       encodedCallArgs: takeOrderArgs,
     });
 
-    const contract = new ComptrollerLib(this.comptrollerAddress, this.wallet);
+    const contract = new ComptrollerLib(comptroller, this.wallet);
 
     return contract.callOnExtension.args(integrationManager, IntegrationManagerActionId.CallOnIntegration, callArgs);
   }
 
   public async tradeAlgorithmically() {
     // get a random token
-    const randomToken = this.chooseRandomAsset();
+    const randomToken = await this.chooseRandomAsset();
 
     // if no random token return, or if the random token is a derivative that's not available on Uniswap
     if (!randomToken || randomToken.derivativeType) {
