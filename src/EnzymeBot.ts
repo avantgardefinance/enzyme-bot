@@ -52,8 +52,6 @@ export class EnzymeBot {
       return undefined;
     }
     
-    const comptroller = new ComptrollerLib(comptrollerAddress, this.wallet);
-    
     const assets = this.tokens.assets.filter((asset) => !asset.derivativeType);
 
     const releaseAssets = assets.filter((asset) =>
