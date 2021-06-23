@@ -17,7 +17,6 @@
     "@uniswap/sdk": "^3.0.3",
     "axios": "^0.21.1",
     "ethers": "^5.0.30",
-    "ethers-eip712": "^0.2.0",
     "graphql": "^15.5.0",
     "graphql-request": "^3.4.0"
   },

@@ -23,13 +23,11 @@ async function run(bot: EnzymeBot) {
     const gasPrice = bot.network === 'KOVAN' ? undefined : await getGasPrice(2);
 
     // if send is set to false it'll give you the tx object that contains the hash
-    const receipt = await tx.gas(gasLimit, gasPrice).send(false);
+    const resolved = await tx.gas(gasLimit, gasPrice).send();
 
-    console.log('This trade has been submitted to the blockchain. TRANSACTION HASH ==>', receipt.hash);
+    console.log('This trade has been submitted to the blockchain. TRANSACTION HASH ==>', resolved.transactionHash);
 
-    // wait for tx to mine
-    const resolved = await receipt.wait();
-
+    
     console.log(`Transaction successful. You spent ${resolved.gasUsed.toString()} in gas.`);
 
     return;

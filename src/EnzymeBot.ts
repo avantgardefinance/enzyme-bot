@@ -4,7 +4,6 @@ import {
   IntegrationManagerActionId,
   takeOrderSelector,
   uniswapV2TakeOrderArgs,
-  ValueInterpreter,
   VaultLib,
 } from '@enzymefinance/protocol';
 import { BigNumber, providers, utils, Wallet } from 'ethers';
@@ -45,10 +44,9 @@ export class EnzymeBot {
   ) {}
 
   public async chooseRandomAsset() {
-    const comptrollerAddress = this.vault.fund?.accessor.id;
     const release = this.vault.fund?.release.id
 
-    if (!comptrollerAddress || !release) {
+    if (!release) {
       return undefined;
     }
     
@@ -112,8 +110,8 @@ export class EnzymeBot {
     });
 
     const contract = new ComptrollerLib(comptroller, this.wallet);
-
     return contract.callOnExtension.args(integrationManager, IntegrationManagerActionId.CallOnIntegration, callArgs);
+
   }
 
   public async tradeAlgorithmically() {
