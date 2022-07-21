@@ -1,10 +1,25 @@
 query vault($id: ID!) {
-  fund(id: $id) {
+  vault(id: $id) {
+    id
+    name
+    deposits {
+      id
+      shares
+    }
+    trackedAssets {
+      id
+      name
+      decimals
+      symbol
+    }
     release {
       id
     }
-    accessor {
+    comptroller {
       id
+      creator {
+        id
+      }
     }
   }
 }
