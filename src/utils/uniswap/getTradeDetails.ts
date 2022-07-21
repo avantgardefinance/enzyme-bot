@@ -9,12 +9,12 @@ export interface TokenBasics {
 }
 
 export async function getTradeDetails(
-  network: 'KOVAN' | 'MAINNET',
+  network: 'POLYGON' | 'MAINNET',
   sellToken: TokenBasics,
   buyToken: TokenBasics,
   sellTokenAmount: BigNumber
 ) {
-  if (network === 'KOVAN') {
+  if (network === 'POLYGON') {
     const path = [sellToken.id, buyToken.id];
     const minIncomingAssetAmount = utils
       .parseUnits('1', buyToken.decimals)
