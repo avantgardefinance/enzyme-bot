@@ -13,9 +13,14 @@
     "codegen": "dotenv -- graphql-codegen --config codegen.yaml"
   },
   "dependencies": {
-    "@enzymefinance/environment": "^0.0.112",
+    "@enzymefinance/environment": "^0.0.113",
     "@enzymefinance/protocol": "^4.0.5",
+    "@uniswap/router-sdk": "^1.0.6",
     "@uniswap/sdk": "^3.0.3",
+    "@uniswap/sdk-core": "^3.0.1",
+    "@uniswap/smart-order-router": "^2.8.0",
+    "@uniswap/v2-sdk": "^3.0.1",
+    "@uniswap/v3-sdk": "^3.9.0",
     "axios": "^0.27.2",
     "ethers": "^5.0.30",
     "graphql": "^16.5.0",
