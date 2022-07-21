@@ -1,4 +1,4 @@
-schema: ${KOVAN_SUBGRAPH_ENDPOINT}
+schema: ${POLYGON_SUBGRAPH_ENDPOINT}
 documents: src/queries/*.graphql
 generates:
   src/utils/subgraph/subgraph.ts:
