@@ -10,3 +10,12 @@ export async function getGasPrice(maxWait: number) {
     throw new Error(`Failed to fetch gas price data: ${error}`);
   }
 }
+
+export async function getPolygonGasPrice() {
+  try {
+    const response = await axios.get('https://gasstation-mainnet.matic.network/v2');
+    return response.data.safeLow.maxPriorityFee;
+  } catch (error) {
+    throw new Error(`Failed to fetch gas price data: ${error}`);
+  }
+}
