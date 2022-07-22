@@ -23,7 +23,6 @@ import { getVaultInfo } from './utils/getVault';
 import { getWallet } from './utils/getWallet';
 import { loadEnv } from './utils/loadEnv';
 import { VaultQuery } from './utils/subgraph/subgraph';
-import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
 import { uniswapV3Price, UniswapPrice } from './utils/uniswap/price';
 
 export class EnzymeBot {
@@ -34,13 +33,13 @@ export class EnzymeBot {
     const provider = getProvider(network);
     const wallet = getWallet(key, provider);
     const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
-    const vault = await getVaultInfo(subgraphEndpoint, vaultAddress);
+    const account = await getVaultInfo(subgraphEndpoint, vaultAddress);
     const deployment = getDeployment(network === 'MAINNET' ? Network.ETHEREUM : Network.POLYGON).slug;
     const environment = getEnvironment(deployment);
     const contracts = environment.contracts;
     const assets = environment.getAssets({ registered: true, types: [AssetType.PRIMITIVE] });
 
-    return new this(network, environment, contracts, assets, wallet, vaultAddress, vault, provider, subgraphEndpoint);
+    return new this(network, environment, contracts, assets, wallet, vaultAddress, account, provider, subgraphEndpoint);
   }
 
   private constructor(
@@ -50,13 +49,13 @@ export class EnzymeBot {
     public readonly assets: PrimitiveAsset[],
     public readonly wallet: Wallet,
     public readonly vaultAddress: string,
-    public readonly vault: VaultQuery,
+    public readonly account: VaultQuery,
     public readonly provider: providers.JsonRpcProvider,
     public readonly subgraphEndpoint: string
   ) {}
 
   public async chooseRandomAsset() {
-    const release = this.vault.vault?.release.id;
+    const release = this.account.vault?.release.id;
 
     if (!release) {
       return undefined;
@@ -78,16 +77,10 @@ export class EnzymeBot {
     return Promise.all(holdings.map((item: string) => getToken(this.subgraphEndpoint, 'id', item.toLowerCase())));
   }
 
-  public async getPrice(buyToken: TokenBasics, sellToken: TokenBasics, sellTokenAmount: BigNumber) {
-    const details = await getTradeDetails(this.network, sellToken, buyToken, sellTokenAmount);
-
-    return details;
-  }
-
   public async swapTokens(uniswapPrice: UniswapPrice, quantity: BigNumber) {
     const adapter = this.contracts.UniswapV3Adapter;
     const integrationManager = this.contracts.IntegrationManager;
-    const comptroller = this.vault.vault?.comptroller.id;
+    const comptroller = this.account.vault?.comptroller.id;
 
     if (!adapter || !integrationManager || !comptroller) {
       console.log(

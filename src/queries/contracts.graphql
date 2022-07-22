@@ -1,7 +1,0 @@
-query currentReleaseContracts {
-  network(id: "ENZYME") {
-    currentRelease {
-      id
-    }
-  }
-}
