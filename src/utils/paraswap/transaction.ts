@@ -1,3 +1,8 @@
+/*
+Be aware that we are currently NOT using Paraswap for the bot at this time.
+It is submitted as a possible addition in the future.
+*/
+
 import type { Address } from '@enzymefinance/environment';
 import { Environment, Network } from '@enzymefinance/environment';
 import {
@@ -73,7 +78,7 @@ export async function paraswapTransaction({
   partner,
   provider,
   quantity,
-  userAddress,
+  userAddress = '',
 }: {
   comptrollerProxy: Address;
   environment: Environment;
@@ -169,16 +174,18 @@ export async function paraswapTransaction({
   }
 }
 
-// return paraswapTransaction({
-//   comptrollerProxy: this.vault.vault?.comptroller.id as Address,
+// example for use in the tradeAlgorithmically method using current bot values:
+
+// paraswapTransaction({
+//   comptrollerProxy: this.account.vault?.comptroller.id,
 //   environment: this.environment,
 //   expectedIncomingAmount: price.minIncomingAssetAmount,
 //   incoming: randomToken,
 //   maxSlippage: 0.03,
 //   originAddress: this.vaultAddress,
-//   outgoing,
+//   outgoing: outgoingVaultAsset,
 //   partner: 'enzyme',
 //   provider: this.provider,
 //   quantity: biggestPosition.amount,
-//   userAddress: this.vault.vault?.comptroller.creator.id,
+//   userAddress: this.account.vault?.comptroller.creator.id,
 // });
