@@ -1,11 +1,7 @@
-query vault($id: ID!) {
+query VaultDetails($id: ID!) {
   vault(id: $id) {
     id
     name
-    deposits {
-      id
-      shares
-    }
     trackedAssets {
       id
       name
@@ -17,9 +13,6 @@ query vault($id: ID!) {
     }
     comptroller {
       id
-      creator {
-        id
-      }
     }
   }
 }
