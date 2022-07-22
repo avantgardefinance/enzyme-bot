@@ -1,4 +1,4 @@
-import type { Environment } from '@enzymefinance/environment';
+import type { Environment, PrimitiveAsset } from '@enzymefinance/environment';
 import { Exchange } from '@enzymefinance/environment';
 import { Protocol } from '@uniswap/router-sdk';
 import { CurrencyAmount, Percent, Token, TradeType } from '@uniswap/sdk-core';
@@ -18,6 +18,8 @@ export interface TokenSwapPrice {
   fastTransactionRequired?: boolean;
 }
 
+export type UniswapPrice = TokenSwapPrice & { path?: Token[]; pools?: Pool[] };
+
 export async function uniswapV3Price({
   environment,
   incoming,
@@ -26,13 +28,13 @@ export async function uniswapV3Price({
   slippage = 3,
   provider,
 }: {
-  incoming: any;
+  incoming: PrimitiveAsset;
   environment: Environment;
-  outgoing: any;
+  outgoing: PrimitiveAsset;
   quantity: BigNumber;
   slippage?: number;
   provider: providers.StaticJsonRpcProvider;
-}): Promise<TokenSwapPrice & { path?: Token[]; pools?: Pool[] }> {
+}): Promise<UniswapPrice> {
   try {
     const chainId = Number(environment.network.id);
     const router = new AlphaRouter({ chainId, provider });

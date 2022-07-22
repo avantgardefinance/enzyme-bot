@@ -24,7 +24,7 @@ import { getWallet } from './utils/getWallet';
 import { loadEnv } from './utils/loadEnv';
 import { VaultQuery } from './utils/subgraph/subgraph';
 import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
-import { uniswapV3Price, TokenSwapPrice } from './utils/uniswap/price';
+import { uniswapV3Price, UniswapPrice } from './utils/uniswap/price';
 
 export class EnzymeBot {
   public static async create(network: 'POLYGON' | 'MAINNET') {
@@ -84,7 +84,7 @@ export class EnzymeBot {
     return details;
   }
 
-  public async swapTokens(uniswapPrice: TokenSwapPrice & { path?: any; pools?: any }, quantity: BigNumber) {
+  public async swapTokens(uniswapPrice: UniswapPrice, quantity: BigNumber) {
     const adapter = this.contracts.UniswapV3Adapter;
     const integrationManager = this.contracts.IntegrationManager;
     const comptroller = this.vault.vault?.comptroller.id;
@@ -99,11 +99,16 @@ export class EnzymeBot {
       return;
     }
 
+    if (!uniswapPrice.path || !uniswapPrice.pools) {
+      console.log('uniswap price is missing path or pools');
+      return;
+    }
+
     const takeOrderArgs = uniswapV3TakeOrderArgs({
       minIncomingAssetAmount: uniswapPrice.amount?.mul(Math.floor((1 - 0.05) * 10000)).div(10000) ?? 0,
       outgoingAssetAmount: quantity,
-      pathAddresses: uniswapPrice.path?.map((item: { address: `0x${string}` }) => item.address),
-      pathFees: uniswapPrice.pools?.map((pool: { fee: BigNumber }) => BigNumber.from(pool.fee)),
+      pathAddresses: uniswapPrice.path.map((item) => item.address),
+      pathFees: uniswapPrice.pools.map((pool) => BigNumber.from(pool.fee)),
     });
 
     const callArgs = callOnIntegrationArgs({
@@ -159,7 +164,7 @@ export class EnzymeBot {
       return carry;
     }, holdingsWithAmounts[0]);
 
-    const outgoing = vaultHoldings.filter((holding) => holding?.id === biggestPosition.id)[0];
+    const outgoingVaultAsset = this.assets.filter((asset) => asset?.id === biggestPosition.id)[0];
 
     console.log(
       `The Miner's Delight has chosen. You will trade ${utils.formatUnits(
@@ -173,12 +178,12 @@ export class EnzymeBot {
     const uniswapPrice = await uniswapV3Price({
       environment: this.environment,
       incoming: randomToken,
-      outgoing,
+      outgoing: outgoingVaultAsset,
       quantity: biggestPosition.amount,
       provider: this.provider,
     });
 
-    if (!uniswapPrice.amount || !uniswapPrice.path || !uniswapPrice.pools) {
+    if (uniswapPrice.status === 'ERROR' || !uniswapPrice.amount || !uniswapPrice.path || !uniswapPrice.pools) {
       console.log('No route for uniswap price found');
       throw new Error('No route for uniswap price found');
     }
