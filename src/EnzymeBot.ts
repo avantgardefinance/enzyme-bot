@@ -164,6 +164,7 @@ export class EnzymeBot {
       return carry;
     }, holdingsWithAmounts[0]);
 
+    // get the proper Asset object to pass for uniswap price
     const outgoingVaultAsset = this.assets.filter((asset) => asset?.id === biggestPosition.id)[0];
 
     console.log(
