@@ -12,7 +12,7 @@ A simple example bot for Enzyme Finance
 
 ## NOTE
 
-Even if you plan on implementing a trading strategy on an Ethereum vault, you should begin by using a Polygon vault to get familiar with the setup and to do initial testing. Next, change the strategy in the `tradeAlgorithmically` function to something that you think will actually make you money. Test it and test it some more. Once you're comfortable, update all the appropriate environment variables to reflect your mainnet Enzyme Vault and change the bot instantiation at the bottom of `index.ts` by passing it `MAINNET` instead of `POLYGON`. Of course, if you are using a Polygon vault then leave the instantiation as is and congrats - you are done!
+Even if you plan on implementing a trading strategy on an Ethereum vault, you should begin by using a Polygon vault to get familiar with the setup and to do initial testing. Next, change the strategy in the `tradeAlgorithmically` function to something that you think will actually make you money. Test it and test it some more. Once you're comfortable, update all the appropriate environment variables to reflect your mainnet Enzyme Vault and change the bot instantiation at the bottom of `index.ts` by passing it `ETHEREUM` instead of `POLYGON`. Of course, if you are using a Polygon vault then leave the instantiation as is and congrats - you are done!
 
 ## Change Log
 

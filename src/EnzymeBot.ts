@@ -24,15 +24,15 @@ import { VaultDetailsQuery } from './utils/subgraph/subgraph';
 import { uniswapV3Price, UniswapPrice } from './utils/uniswap/price';
 
 export class EnzymeBot {
-  public static async create(network: 'POLYGON' | 'MAINNET') {
+  public static async create(network: 'POLYGON' | 'ETHEREUM') {
     const subgraphEndpoint =
-      network === 'MAINNET' ? loadEnv('MAINNET_SUBGRAPH_ENDPOINT') : loadEnv('POLYGON_SUBGRAPH_ENDPOINT');
-    const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('POLYGON_PRIVATE_KEY');
+      network === 'ETHEREUM' ? loadEnv('ETHEREUM_SUBGRAPH_ENDPOINT') : loadEnv('POLYGON_SUBGRAPH_ENDPOINT');
+    const key = network === 'ETHEREUM' ? loadEnv('ETHEREUM_PRIVATE_KEY') : loadEnv('POLYGON_PRIVATE_KEY');
     const provider = getProvider(network);
     const wallet = getWallet(key, provider);
     const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
     const vaultDetails = await getVaultInfo(subgraphEndpoint, vaultAddress);
-    const deployment = getDeployment(network === 'MAINNET' ? Network.ETHEREUM : Network.POLYGON).slug;
+    const deployment = getDeployment(network === 'ETHEREUM' ? Network.ETHEREUM : Network.POLYGON).slug;
     const environment = getEnvironment(deployment);
     const contracts = environment.contracts;
     const assets = environment.getAssets({ registered: true, types: [AssetType.PRIMITIVE] });
@@ -51,7 +51,7 @@ export class EnzymeBot {
   }
 
   private constructor(
-    public readonly network: 'POLYGON' | 'MAINNET',
+    public readonly network: 'POLYGON' | 'ETHEREUM',
     public readonly environment: Environment,
     public readonly contracts: SuluContracts,
     public readonly assets: PrimitiveAsset[],
