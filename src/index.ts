@@ -17,7 +17,7 @@ async function run(bot: EnzymeBot) {
     await tx.call();
 
     // get gas limit ()
-    const gasLimit = await (await tx.estimate()).mul(10).div(9);
+    const gasLimit = (await tx.estimate()).mul(10).div(9);
 
     // on mainnet, returns a gasPrice in gwei from EthGasStation that's most likely to get your transaction done within N minutes
     const gasPrice = bot.network === 'POLYGON' ? await getPolygonGasPrice() : await getGasPrice(2);
