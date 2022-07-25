@@ -152,6 +152,7 @@ export class EnzymeBot {
     });
 
     // find the token you will sell by searching for largest token holding
+    // this does NOT look at the actual value of the holdings (largest USD value), but instead largest token amount
     const biggestPosition = holdingsWithAmounts.reduce((carry, current) => {
       if (current.amount.gte(carry.amount)) {
         return current;
