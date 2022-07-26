@@ -79,7 +79,7 @@ export class EnzymeBot {
     return this.assets[random];
   }
 
-  public async swapTokens(uniswapPrice: UniswapPrice, quantity: BigNumber) {
+  public async swapTokens(uniswapPrice: UniswapPrice, outgoingAssetAmount: BigNumber) {
     const adapter = this.contracts.UniswapV3Adapter;
     const integrationManager = this.contracts.IntegrationManager;
     const comptroller = this.vaultDetails.vault?.comptroller.id;
@@ -101,7 +101,7 @@ export class EnzymeBot {
 
     const takeOrderArgs = uniswapV3TakeOrderArgs({
       minIncomingAssetAmount: uniswapPrice.amount?.mul(Math.floor((1 - 0.05) * 10000)).div(10000) ?? 0,
-      outgoingAssetAmount: quantity,
+      outgoingAssetAmount,
       pathAddresses: uniswapPrice.path.map((item) => item.address),
       pathFees: uniswapPrice.pools.map((pool) => BigNumber.from(pool.fee)),
     });
