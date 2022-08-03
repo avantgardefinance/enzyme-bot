@@ -4,8 +4,6 @@ node_modules
 # dot files
 .*
 
-# .lock files
-*.lock
 
 # .log files
 *.log
@@ -17,4 +15,5 @@ src/utils/subgraph/subgraph.ts
 !.prettierrc
 !.env.example
 !.gitignore
+!.vscode
 

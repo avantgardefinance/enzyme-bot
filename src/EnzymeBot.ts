@@ -3,90 +3,87 @@ import {
   ComptrollerLib,
   IntegrationManagerActionId,
   takeOrderSelector,
-  uniswapV2TakeOrderArgs,
-  VaultLib,
+  uniswapV3TakeOrderArgs,
 } from '@enzymefinance/protocol';
+import {
+  Network,
+  getDeployment,
+  SuluContracts,
+  Environment,
+  AssetType,
+  PrimitiveAsset,
+} from '@enzymefinance/environment';
+import { getEnvironment } from '@enzymefinance/environment/all';
 import { BigNumber, providers, utils, Wallet } from 'ethers';
-import { getDeployment } from './utils/getDeployment';
 import { getProvider } from './utils/getProvider';
-import { getToken, getTokens } from './utils/getToken';
 import { getTokenBalance } from './utils/getTokenBalance';
 import { getVaultInfo } from './utils/getVault';
 import { getWallet } from './utils/getWallet';
 import { loadEnv } from './utils/loadEnv';
-import { AssetsQuery, CurrentReleaseContractsQuery, VaultQuery } from './utils/subgraph/subgraph';
-import { getTradeDetails, TokenBasics } from './utils/uniswap/getTradeDetails';
+import { VaultDetailsQuery } from './utils/subgraph/subgraph';
+import { uniswapV3Price, UniswapPrice } from './utils/uniswap/price';
 
 export class EnzymeBot {
-  public static async create(network: 'KOVAN' | 'MAINNET') {
+  public static async create(network: 'POLYGON' | 'ETHEREUM') {
     const subgraphEndpoint =
-      network === 'MAINNET' ? loadEnv('MAINNET_SUBGRAPH_ENDPOINT') : loadEnv('KOVAN_SUBGRAPH_ENDPOINT');
-    const key = network === 'MAINNET' ? loadEnv('MAINNET_PRIVATE_KEY') : loadEnv('KOVAN_PRIVATE_KEY');
-    const contracts = await getDeployment(subgraphEndpoint);
-    const tokens = await getTokens(subgraphEndpoint);
+      network === 'ETHEREUM' ? loadEnv('ETHEREUM_SUBGRAPH_ENDPOINT') : loadEnv('POLYGON_SUBGRAPH_ENDPOINT');
+    const key = network === 'ETHEREUM' ? loadEnv('ETHEREUM_PRIVATE_KEY') : loadEnv('POLYGON_PRIVATE_KEY');
     const provider = getProvider(network);
     const wallet = getWallet(key, provider);
     const vaultAddress = loadEnv('ENZYME_VAULT_ADDRESS');
-    const vault = await getVaultInfo(subgraphEndpoint, vaultAddress);
+    const vaultDetails = await getVaultInfo(subgraphEndpoint, vaultAddress);
+    const deployment = getDeployment(network === 'ETHEREUM' ? Network.ETHEREUM : Network.POLYGON).slug;
+    const environment = getEnvironment(deployment);
+    const contracts = environment.contracts;
+    const assets = environment.getAssets({ registered: true, types: [AssetType.PRIMITIVE] });
 
-    return new this(network, contracts, tokens, wallet, vaultAddress, vault, provider, subgraphEndpoint);
+    return new this(
+      network,
+      environment,
+      contracts,
+      assets,
+      wallet,
+      vaultAddress,
+      vaultDetails,
+      provider,
+      subgraphEndpoint
+    );
   }
 
   private constructor(
-    public readonly network: 'KOVAN' | 'MAINNET',
-    public readonly contracts: CurrentReleaseContractsQuery,
-    public readonly tokens: AssetsQuery,
+    public readonly network: 'POLYGON' | 'ETHEREUM',
+    public readonly environment: Environment,
+    public readonly contracts: SuluContracts,
+    public readonly assets: PrimitiveAsset[],
     public readonly wallet: Wallet,
     public readonly vaultAddress: string,
-    public readonly vault: VaultQuery,
+    public readonly vaultDetails: VaultDetailsQuery,
     public readonly provider: providers.JsonRpcProvider,
     public readonly subgraphEndpoint: string
   ) {}
 
   public async chooseRandomAsset() {
-    const release = this.vault.fund?.release.id
+    const release = this.vaultDetails.vault?.release.id;
 
     if (!release) {
       return undefined;
     }
-    
-    const assets = this.tokens.assets.filter((asset) => !asset.derivativeType);
 
-    const releaseAssets = assets.filter((asset) =>
-      asset.releases.map((innerRelease) => innerRelease.id).includes(release)
-    );
-
-    if (!releaseAssets || releaseAssets.length === 0) {
+    if (!this.assets || this.assets.length === 0) {
       return undefined;
     }
 
-    const length = releaseAssets.length;
+    const length = this.assets.length;
     const random = Math.floor(Math.random() * length);
 
-    return releaseAssets[random];
+    return this.assets[random];
   }
 
-  public async getHoldings() {
-    const vault = new VaultLib(this.vaultAddress, this.wallet);
-    const holdings = await vault.getTrackedAssets();
-    return Promise.all(holdings.map((item: string) => getToken(this.subgraphEndpoint, 'id', item.toLowerCase())));
-  }
+  public async swapTokens(uniswapPrice: UniswapPrice, outgoingAssetAmount: BigNumber) {
+    const adapter = this.contracts.UniswapV3Adapter;
+    const integrationManager = this.contracts.IntegrationManager;
+    const comptroller = this.vaultDetails.vault?.comptroller.id;
 
-  public async getPrice(buyToken: TokenBasics, sellToken: TokenBasics, sellTokenAmount: BigNumber) {
-    const details = await getTradeDetails(this.network, sellToken, buyToken, sellTokenAmount);
-
-    return details;
-  }
-
-  public async swapTokens(trade: {
-    path: string[];
-    minIncomingAssetAmount: BigNumber;
-    outgoingAssetAmount: BigNumber;
-  }) {
-    const adapter = this.contracts.network?.currentRelease?.uniswapV2Adapter;
-    const integrationManager = this.contracts.network?.currentRelease?.integrationManager;
-    const comptroller = this.vault.fund?.accessor.id
-    
     if (!adapter || !integrationManager || !comptroller) {
       console.log(
         'Missing a contract address. Uniswap Adapter: ',
@@ -97,10 +94,16 @@ export class EnzymeBot {
       return;
     }
 
-    const takeOrderArgs = uniswapV2TakeOrderArgs({
-      path: trade.path,
-      minIncomingAssetAmount: trade.minIncomingAssetAmount,
-      outgoingAssetAmount: trade.outgoingAssetAmount,
+    if (!uniswapPrice.path || !uniswapPrice.pools) {
+      console.log('uniswap price is missing path or pools');
+      return;
+    }
+
+    const takeOrderArgs = uniswapV3TakeOrderArgs({
+      minIncomingAssetAmount: uniswapPrice.amount?.mul(Math.floor((1 - 0.05) * 10000)).div(10000) ?? 0,
+      outgoingAssetAmount,
+      pathAddresses: uniswapPrice.path.map((item) => item.address),
+      pathFees: uniswapPrice.pools.map((pool) => BigNumber.from(pool.fee)),
     });
 
     const callArgs = callOnIntegrationArgs({
@@ -111,7 +114,6 @@ export class EnzymeBot {
 
     const contract = new ComptrollerLib(comptroller, this.wallet);
     return contract.callOnExtension.args(integrationManager, IntegrationManagerActionId.CallOnIntegration, callArgs);
-
   }
 
   public async tradeAlgorithmically() {
@@ -119,37 +121,38 @@ export class EnzymeBot {
     const randomToken = await this.chooseRandomAsset();
 
     // if no random token return, or if the random token is a derivative that's not available on Uniswap
-    if (!randomToken || randomToken.derivativeType) {
+    if (!randomToken) {
       console.log("The Miner's Delight did not find an appropriate token to buy.");
       return;
     }
 
     // get your fund's holdings
-    const vaultHoldings = await this.getHoldings();
+    const holdings = this.vaultDetails.vault?.trackedAssets;
 
     // if you have no holdings, return
-    if (vaultHoldings.length === 0) {
+    if (!holdings || holdings.length === 0) {
       console.log('Your fund has no assets.');
       return;
     }
 
     // if your vault already holds the random token, return
-    if (vaultHoldings.map((holding) => holding?.id.toLowerCase()).includes(randomToken.id.toLowerCase())) {
+    if (holdings.map((holding) => holding.id.toLowerCase()).includes(randomToken.id.toLowerCase())) {
       console.log("You already hold the asset that the Miner's Delight randomly selected.");
       return;
     }
 
     // get the amount of each holding
     const holdingAmounts = await Promise.all(
-      vaultHoldings.map((holding) => getTokenBalance(this.vaultAddress, holding!.id, this.network))
+      holdings.map((holding) => getTokenBalance(this.vaultAddress, holding.id, this.network))
     );
 
     // combine holding token data with amounts
-    const holdingsWithAmounts = vaultHoldings.map((item, index) => {
-      return { ...item, amount: holdingAmounts[index] };
+    const holdingsWithAmounts = holdings.map((holding, index) => {
+      return { ...holding, amount: holdingAmounts[index] };
     });
 
     // find the token you will sell by searching for largest token holding
+    // this does NOT look at the actual value of the holdings (largest USD value), but instead largest token amount
     const biggestPosition = holdingsWithAmounts.reduce((carry, current) => {
       if (current.amount.gte(carry.amount)) {
         return current;
@@ -157,28 +160,34 @@ export class EnzymeBot {
       return carry;
     }, holdingsWithAmounts[0]);
 
+    // get the proper Asset object to pass for uniswap price
+    const outgoingVaultAsset = this.assets.filter(
+      (asset) => asset.id.toLowerCase() === biggestPosition.id.toLowerCase()
+    )[0];
+
     console.log(
       `The Miner's Delight has chosen. You will trade ${utils.formatUnits(
         biggestPosition.amount,
-        biggestPosition.decimals
-      )} ${biggestPosition.name} (${biggestPosition.symbol}) for as many ${randomToken.name} (${
+        outgoingVaultAsset.decimals
+      )} ${outgoingVaultAsset.name} (${outgoingVaultAsset.symbol}) for as many ${randomToken.name} (${
         randomToken.symbol
       }) as you can get.`
     );
 
-    // get the trade data
-    const price = await this.getPrice(
-      { id: randomToken.id, decimals: randomToken.decimals, symbol: randomToken.symbol, name: randomToken.name },
-      {
-        id: biggestPosition.id as string,
-        decimals: biggestPosition.decimals as number,
-        symbol: biggestPosition.symbol as string,
-        name: biggestPosition.name as string,
-      },
-      biggestPosition.amount
-    );
+    const uniswapPrice = await uniswapV3Price({
+      environment: this.environment,
+      incoming: randomToken,
+      outgoing: outgoingVaultAsset,
+      quantity: biggestPosition.amount,
+      provider: this.provider,
+    });
+
+    if (uniswapPrice.status === 'ERROR' || !uniswapPrice.amount || !uniswapPrice.path || !uniswapPrice.pools) {
+      console.log('No route for uniswap price found');
+      throw new Error('No route for uniswap price found');
+    }
 
     // call the transaction
-    return this.swapTokens(price);
+    return this.swapTokens(uniswapPrice, biggestPosition.amount);
   }
 }

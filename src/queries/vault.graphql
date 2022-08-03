@@ -1,9 +1,17 @@
-query vault($id: ID!) {
-  fund(id: $id) {
+query VaultDetails($id: ID!) {
+  vault(id: $id) {
+    id
+    name
+    trackedAssets {
+      id
+      name
+      decimals
+      symbol
+    }
     release {
       id
     }
-    accessor {
+    comptroller {
       id
     }
   }
