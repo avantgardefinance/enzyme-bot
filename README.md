@@ -18,7 +18,7 @@ Even if you plan on implementing a trading strategy on an Ethereum vault, you sh
 
 ### 25 July 2022
 
-A [new Medium post]() was published detailing the substantial update to this repo. As a brief recap:
+A [new Medium post](https://medium.com/@avantgardefi) was published detailing the substantial update to this repo. As a brief recap:
 
 - The bot switched from using the `Kovan` testnet to transacting over `Polygon`
 - It now uses Uniswap V3 instead of V2
